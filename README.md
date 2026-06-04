@@ -184,4 +184,3 @@ docker run -d \
 ## License
 
 本项目为浙江大学《人工智能基础A》课程大作业。
-[Auto-deploy test at Thu Jun  4 21:35:33     2026]
