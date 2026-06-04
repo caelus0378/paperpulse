@@ -3,7 +3,7 @@ name: Deploy to Server
 on:
   push:
     branches: [main]
-  workflow_dispatch:  # 允许手动触发
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -18,7 +18,18 @@ jobs:
           script: |
             set -e
             cd /app
+
+            # 备份 .env 和数据
+            cp .env /tmp/paperpulse_env_backup 2>/dev/null || true
+
+            # 拉取最新代码
             git pull origin main
+
+            # 恢复 .env
+            cp /tmp/paperpulse_env_backup /app/.env 2>/dev/null || true
+
+            # 重建并启动
             docker compose down
             docker compose up -d --build
-            echo "✅ Deploy completed — $(date)"
+
+            echo "✅ Deploy OK — $(date)"
