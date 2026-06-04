@@ -1,0 +1,52 @@
+# ============================================================
+# PaperPulse — Docker Compose 编排文件
+# 使用: docker compose up -d
+# ============================================================
+
+version: "3.9"
+
+services:
+  # ─── Web UI 服务 ───────────────────────────────────────
+  web:
+    build: .
+    container_name: paperpulse-web
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-7860}:7860"
+    env_file:
+      - .env
+    volumes:
+      # 持久化数据：数据库 + 日报
+      - ./data:/app/data
+      - ./reports:/app/reports
+    command: python main.py --web --port 7860
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7860"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ─── 定时调度服务 ─────────────────────────────────────
+  scheduler:
+    build: .
+    container_name: paperpulse-scheduler
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports
+    command: python scheduler.py
+    depends_on:
+      - web
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

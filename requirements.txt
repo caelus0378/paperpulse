@@ -1,0 +1,30 @@
+# 每日学术论文热点追踪系统 — 依赖清单
+# 安装方式: pip install -r requirements.txt
+
+# === AI 模型调用 ===
+openai>=1.0.0                # DeepSeek API（OpenAI 兼容接口）
+
+# === 数据获取与处理 ===
+requests>=2.31.0             # HTTP 请求（arXiv API）
+feedparser>=6.0.0            # arXiv API 返回的 Atom/XML 解析
+pandas>=2.0.0                # 数据分析
+numpy>=1.24.0                # 数值计算
+
+# === 中文处理 ===
+jieba>=0.42.1                # 中文分词
+
+# === 可视化 ===
+matplotlib>=3.7.0            # 图表绘制
+wordcloud>=1.9.0             # 词云
+
+# === Web UI ===
+gradio>=4.0.0                # Web 界面
+
+# === 定时任务 ===
+schedule>=1.2.0              # Python 定时任务
+
+# === 报告生成 ===
+markdown>=3.5.0              # Markdown 处理
+
+# === 数据库 ===
+# SQLite 为 Python 内置模块，无需额外安装

@@ -1,0 +1,25 @@
+# 环境变量（含 API Key，切勿提交）
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# 数据库
+data/*.db
+
+# 日报文件
+reports/*.md
+reports/charts/
+
+# IDE
+.vscode/
+.idea/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
