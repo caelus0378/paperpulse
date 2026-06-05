@@ -34,13 +34,9 @@ DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
 # arXiv API 配置
 # ============================================================
 ARXIV_CATEGORIES = [
-    # ── 核心 AI 分类（减少到 6 个避免过度限流）──
     "cs.AI",
     "cs.CL",
-    "cs.CV",
     "cs.LG",
-    "cs.CR",
-    "stat.ML",
 ]
 
 MAX_PAPERS_PER_CATEGORY = 20
@@ -48,7 +44,7 @@ MAX_PAPERS_TOTAL = 300
 LOOKBACK_DAYS = 2
 
 # arXiv API 基础 URL
-ARXIV_API_URL = "http://export.arxiv.org/api/query"
+ARXIV_API_URL = "https://export.arxiv.org/api/query"
 
 # 请求间隔（秒）—— arXiv 官方要求至少 1 秒，我们设 6 秒避免 429
 REQUEST_DELAY = float(os.environ.get("ARXIV_DELAY", "10.0"))

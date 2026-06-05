@@ -101,7 +101,8 @@ def _fetch_with_retry(url: str, max_retries: int = 3, base_delay: float = 5.0) -
     """
     for attempt in range(max_retries):
         try:
-            resp = requests.get(url, timeout=30)
+            headers = {"User-Agent": "PaperPulse/1.0 (mailto:example@zju.edu.cn)"}
+            resp = requests.get(url, timeout=30, headers=headers)
 
             # 成功
             if resp.status_code == 200:
