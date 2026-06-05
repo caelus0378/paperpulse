@@ -47,7 +47,7 @@ LOOKBACK_DAYS = 2
 ARXIV_API_URL = "https://export.arxiv.org/api/query"
 
 # 请求间隔（秒）—— arXiv 官方要求至少 1 秒，我们设 6 秒避免 429
-REQUEST_DELAY = float(os.environ.get("ARXIV_DELAY", "10.0"))
+REQUEST_DELAY = float(os.environ.get("ARXIV_DELAY", "2.0"))
 
 # ============================================================
 # 数据库配置
