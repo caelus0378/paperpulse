@@ -775,7 +775,7 @@ def build_ui():
                     <br>
                     <h3>数据覆盖范围</h3>
                     <p style="color:#64748b">
-                        cs.AI、cs.CL、cs.CV、cs.LG、cs.NE、cs.RO、cs.IR、cs.SE、cs.CR、cs.HC、stat.ML、econ.GN 共 12 个核心 arXiv 子领域
+                        OpenAlex 开放学术数据库，覆盖 AI、CV、NLP、ML、机器人、强化学习、深度学习、大语言模型 共 8 大热门主题
                     </p>
                     <br>
                     <p style="color:#94a3b8;font-size:12px">
