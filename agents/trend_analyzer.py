@@ -150,10 +150,21 @@ def analyze_trends_with_llm(
         for p in hot
     )
 
-    # 格式化昨日趋势
+    # 格式化昨日趋势——只提取关键数字而非完整报告，避免 LLM 混乱
     yesterday_text = "（无昨日数据）"
     if yesterday_trend:
-        yesterday_text = yesterday_trend.get("trend_summary", "（数据异常）")
+        y_total = yesterday_trend.get("total_papers", "?")
+        y_dist = yesterday_trend.get("category_dist", {})
+        y_top3 = list(y_dist.items())[:3] if y_dist else []
+        y_kw = yesterday_trend.get("keyword_trends", {})
+        y_top_kw = list(y_kw.keys())[:5] if y_kw else []
+        y_dist_text = "、".join(f"{k}({v}篇)" for k,v in y_top3) if y_top3 else "无"
+        y_kw_text = "、".join(y_top_kw) if y_top_kw else "无"
+        yesterday_text = (
+            f"昨日共采集 {y_total} 篇论文。"
+            f"昨日热门方向 TOP 3: {y_dist_text}。"
+            f"昨日高频关键词: {y_kw_text}。"
+        )
 
     # 格式化子领域分布
     dist_text = "\n".join(f"- {k}: {v} 篇" for k, v in category_dist.items())
