@@ -297,7 +297,15 @@ def _build_paper_trends_card(chart_b64: str, pct_change: float, abs_change: int)
 def _build_top_papers_card(papers: list[dict], top_k: int = 5) -> str:
     icons = ["🔴", "🟠", "🟡", "🔵", "⚪"]
     rows = ""
-    sorted_p = sorted(papers, key=lambda x: float(x.get("importance", 0)), reverse=True)[:top_k]
+    # 过滤掉"其他"和模糊论文、低评分论文
+    hot_candidates = [
+        p for p in papers
+        if float(p.get("importance", 0)) >= 1.5
+        and "其他" not in (p.get("subfield") or "")
+    ]
+    sorted_p = sorted(hot_candidates, key=lambda x: float(x.get("importance", 0)), reverse=True)[:top_k]
+    if not sorted_p:
+        sorted_p = sorted(papers, key=lambda x: float(x.get("importance", 0)), reverse=True)[:top_k]
     if not sorted_p:
         sorted_p = papers[:top_k]
     for i, p in enumerate(sorted_p):

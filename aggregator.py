@@ -74,9 +74,17 @@ def generate_daily_report(
                 else:
                     sections.append("")
 
-    # ============ 三、今日热点论文 TOP 10 ============
+    # ============ 三、今日热点论文 TOP 10（过滤模糊分类+低质量）============
     sections.append("## 三、今日热点论文 TOP 10\n")
-    hot_papers = sorted(papers, key=lambda x: x.get("importance", 0), reverse=True)[:10]
+    # 只保留有明确分类(不含"其他")且评分>=2.0的论文
+    hot_candidates = [
+        p for p in papers
+        if float(p.get("importance", 0)) >= 2.0
+        and "其他" not in (p.get("subfield") or "")
+    ]
+    hot_papers = sorted(hot_candidates, key=lambda x: float(x.get("importance", 0)), reverse=True)[:10]
+    if not hot_papers:
+        hot_papers = sorted(papers, key=lambda x: float(x.get("importance", 0)), reverse=True)[:10]
     for i, p in enumerate(hot_papers, 1):
         imp = p.get("importance", 0)
         medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."

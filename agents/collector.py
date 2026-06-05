@@ -44,7 +44,9 @@ def _fetch_topic(topic: str, concept_id: str, limit: int = 25) -> list[dict]:
     from datetime import timedelta
     today = date.today()
     week_ago = today - timedelta(days=7)
+    # 限定 Computer Science (C41008148) + 目标主题 + 最近7天 + 有摘要
     date_filter = (
+        f"concepts.id:C41008148,"
         f"concepts.id:{concept_id},"
         f"from_publication_date:{week_ago.isoformat()},"
         f"to_publication_date:{today.isoformat()},"
