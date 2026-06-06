@@ -66,6 +66,48 @@ def init_db():
         )
     """)
 
+    # 质量评估表
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS quality_scores (
+            arxiv_id TEXT PRIMARY KEY,
+            methodology REAL, novelty REAL,
+            reproducibility REAL, clarity REAL,
+            overall_comment TEXT,
+            composite_score REAL,
+            assessed_date TEXT
+        )
+    """)
+
+    # 论文翻译表
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS paper_translations (
+            arxiv_id TEXT PRIMARY KEY,
+            zh_title TEXT,
+            zh_abstract TEXT,
+            en_title TEXT,
+            en_abstract TEXT
+        )
+    """)
+
+    # 交叉引用图谱表
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS cross_ref_graphs (
+            report_date TEXT PRIMARY KEY,
+            graph_json TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+
+    # 周报表
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS weekly_reports (
+            end_date TEXT PRIMARY KEY,
+            week_label TEXT,
+            report_content TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+
     conn.commit()
     conn.close()
 

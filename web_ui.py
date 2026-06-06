@@ -21,6 +21,7 @@ from database import (
     get_papers_by_date,
     get_all_report_dates,
     get_daily_trend,
+    get_connection,
 )
 from aggregator import load_report
 
@@ -602,6 +603,80 @@ def build_search_html(query: str = "", subfield_filter: str = "全部") -> str:
     </div>"""
 
 
+def build_weekly_html() -> str:
+    """周报页面"""
+    from datetime import date, timedelta
+    from agents.weekly_digest import generate_weekly_digest, get_weekly_report
+
+    today = date.today()
+    # 先尝试加载已有的本周周报
+    report = get_weekly_report(today.isoformat())
+
+    if not report:
+        # 检查是否有足够的数据
+        available = get_all_report_dates()
+        if len(available) >= 3:
+            try:
+                report = generate_weekly_digest(today.isoformat())
+            except Exception as e:
+                report = f"## 周报生成失败\n\n错误: {e}\n\n请确认已配置 API Key 并有足够的日报数据。"
+        else:
+            report = "暂无足够数据生成周报（需要至少 3 天的日报数据）。请先运行每日分析流水线。"
+
+    report_html = markdown.markdown(
+        report,
+        extensions=['tables', 'fenced_code', 'nl2br'],
+        output_format='html',
+    )
+
+    available_weeks = []
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT end_date, week_label FROM weekly_reports ORDER BY end_date DESC LIMIT 10")
+        available_weeks = [(r["end_date"], r["week_label"]) for r in cur.fetchall()]
+        conn.close()
+    except Exception:
+        pass
+
+    week_links = "".join(
+        f'<option value="{d}">{label}</option>'
+        for d, label in available_weeks
+    ) if available_weeks else '<option>暂无历史周报</option>'
+
+    return f"""
+    <style>{DASHBOARD_CSS}</style>
+    {_build_navbar()}
+    <div class="card" style="margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+                <div class="card-title">学术周报</div>
+                <div class="card-subtitle">基于 7 天日报数据自动汇总，由 DeepSeek 大模型生成趋势综述</div>
+            </div>
+        </div>
+    </div>
+    <div class="card" style="max-height:70vh;overflow-y:auto;padding:24px">
+        <div class="markdown-body">{report_html}</div>
+    </div>
+    <div style="text-align:center;padding:12px;color:#94a3b8;font-size:11px">
+        周报由 Weekly Digest Agent 自动生成 &middot; {date.today().isoformat()}
+    </div>
+    <style>
+    .markdown-body {{ font-size:14px; color:#334155; line-height:1.8; }}
+    .markdown-body h1 {{ font-size:22px; font-weight:700; color:#1e293b; margin-top:16px; margin-bottom:8px; }}
+    .markdown-body h2 {{ font-size:18px; font-weight:700; color:#1e293b; margin-top:14px; margin-bottom:6px; border-bottom:1px solid #e2e8f0; padding-bottom:4px; }}
+    .markdown-body h3 {{ font-size:15px; font-weight:600; color:#334155; margin-top:12px; }}
+    .markdown-body table {{ border-collapse:collapse; width:100%; margin:10px 0; }}
+    .markdown-body th, .markdown-body td {{ border:1px solid #e2e8f0; padding:8px 12px; text-align:left; font-size:13px; }}
+    .markdown-body th {{ background:#f8fafc; font-weight:600; }}
+    .markdown-body code {{ background:#f1f5f9; padding:2px 6px; border-radius:4px; font-size:12px; }}
+    .markdown-body pre {{ background:#f8fafc; padding:16px; border-radius:8px; overflow-x:auto; border:1px solid #e2e8f0; }}
+    .markdown-body a {{ color:#3b82f6; }}
+    .markdown-body blockquote {{ border-left:3px solid #3b82f6; padding-left:16px; margin:8px 0; color:#64748b; }}
+    .markdown-body hr {{ border:none; border-top:1px solid #e2e8f0; margin:20px 0; }}
+    </style>"""
+
+
 def build_history_html(selected_date: str = "") -> str:
     """历史日报页"""
     available = get_all_report_dates()
@@ -746,7 +821,16 @@ def build_ui():
 
                 history_date.change(_on_history_change, history_date, history_html)
 
-            # ── Tab 4: 关于系统 ──
+            # ── Tab 4: 周报 ──
+            with gr.TabItem("周报", id="weekly"):
+                weekly_html = gr.HTML(value=build_weekly_html())
+                refresh_weekly_btn = gr.Button("生成/刷新周报", variant="primary")
+                refresh_weekly_btn.click(
+                    fn=lambda: build_weekly_html(),
+                    outputs=weekly_html,
+                )
+
+            # ── Tab 5: 关于系统 ──
             with gr.TabItem("关于系统", id="about"):
                 gr.HTML(f"""
                 <style>{DASHBOARD_CSS}</style>
@@ -755,22 +839,38 @@ def build_ui():
                     <div class="card-title">关于 PaperPulse</div>
                     <div class="card-subtitle">每日学术论文热点追踪系统</div>
                     <br>
-                    <h3>多智能体架构</h3>
+                    <h3>多智能体架构（7 Agents）</h3>
                     <table style="width:100%;border-collapse:collapse;margin:12px 0">
                         <tr style="border-bottom:1px solid #f1f5f9">
-                            <td style="padding:10px;font-weight:600;width:180px">采集智能体</td>
-                            <td style="padding:10px;color:#64748b">arXiv API + feedparser</td>
+                            <td style="padding:10px;font-weight:600;width:200px">📡 采集智能体</td>
+                            <td style="padding:10px;color:#64748b">OpenAlex API 开源学术数据</td>
                         </tr>
                         <tr style="border-bottom:1px solid #f1f5f9">
-                            <td style="padding:10px;font-weight:600">分类与摘要智能体</td>
-                            <td style="padding:10px;color:#64748b">DeepSeek API 语义理解</td>
+                            <td style="padding:10px;font-weight:600">🏷️ 分类与摘要智能体</td>
+                            <td style="padding:10px;color:#64748b">DeepSeek API 语义理解与分类</td>
                         </tr>
                         <tr style="border-bottom:1px solid #f1f5f9">
-                            <td style="padding:10px;font-weight:600">趋势分析智能体</td>
-                            <td style="padding:10px;color:#64748b">jieba 分词 + DeepSeek API</td>
+                            <td style="padding:10px;font-weight:600">📊 趋势分析智能体</td>
+                            <td style="padding:10px;color:#64748b">jieba 分词 + DeepSeek API 趋势预测</td>
+                        </tr>
+                        <tr style="border-bottom:1px solid #f1f5f9">
+                            <td style="padding:10px;font-weight:600">✅ 质量评估智能体</td>
+                            <td style="padding:10px;color:#64748b">四维评估（方法论/创新性/可复现性/写作质量）</td>
+                        </tr>
+                        <tr style="border-bottom:1px solid #f1f5f9">
+                            <td style="padding:10px;font-weight:600">🔗 交叉引用智能体</td>
+                            <td style="padding:10px;color:#64748b">TF-IDF 语义相似度 + 关联图谱构建</td>
+                        </tr>
+                        <tr style="border-bottom:1px solid #f1f5f9">
+                            <td style="padding:10px;font-weight:600">🌐 双语翻译智能体</td>
+                            <td style="padding:10px;color:#64748b">DeepSeek API 学术中英互译</td>
+                        </tr>
+                        <tr style="border-bottom:1px solid #f1f5f9">
+                            <td style="padding:10px;font-weight:600">📝 周报汇总智能体</td>
+                            <td style="padding:10px;color:#64748b">7天日报聚合 + LLM 趋势综述</td>
                         </tr>
                         <tr>
-                            <td style="padding:10px;font-weight:600">报告汇总智能体</td>
+                            <td style="padding:10px;font-weight:600">📋 日报汇总器</td>
                             <td style="padding:10px;color:#64748b">Markdown 日报自动生成</td>
                         </tr>
                     </table>

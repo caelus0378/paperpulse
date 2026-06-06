@@ -3,11 +3,15 @@
 ──────────────────────────────
 基于 OpenClaw 多智能体协同框架设计
 
-三个智能体分工协作：
-  智能体 1 (Collector)   → 论文采集
-  智能体 2 (Classifier)  → 分类与摘要
-  智能体 3 (TrendAnalyzer) → 趋势分析
-  Aggregator             → 报告汇总
+七个智能体分工协作：
+  智能体 1 (Collector)      → 论文采集
+  智能体 2 (Classifier)     → 分类与摘要
+  智能体 3 (TrendAnalyzer)  → 趋势分析
+  智能体 4 (QualityAssessor)→ 质量评估
+  智能体 5 (CrossReferencer)→ 交叉引用与关联
+  智能体 6 (Translator)     → 双语翻译
+  智能体 7 (WeeklyDigest)   → 周报汇总
+  Aggregator                → 日报汇总
 
 用法:
   # 运行一次完整分析
@@ -127,6 +131,68 @@ def run_full_pipeline():
     from aggregator import generate_daily_report
     report = generate_daily_report(papers, trend_result, report_date)
     print(f"[Main] [OK] 日报生成完成")
+
+    # ================================================
+    # 阶段 5: 质量评估（智能体 4）
+    # ================================================
+    print("\n" + "-" * 40)
+    print(" 阶段 5/7: 质量评估智能体 (Quality Assessor Agent)")
+    print("-" * 40)
+
+    quality_results = None
+    if _check_api_key():
+        from agents.quality_assessor import assess_quality, get_quality_report
+        try:
+            quality_results = assess_quality(papers)
+            quality_report = get_quality_report(quality_results)
+            print(f"[Main] [OK] 质量评估完成")
+            print(f"    方法论均分: {quality_report.get('avg_methodology', 0)}")
+            print(f"    创新性均分: {quality_report.get('avg_novelty', 0)}")
+        except Exception as e:
+            print(f"[Main] [WARN] 质量评估失败: {e}")
+    else:
+        print("[Main] [WARN] 未配置 API Key，跳过质量评估")
+
+    # ================================================
+    # 阶段 6: 交叉引用与关联分析（智能体 5）
+    # ================================================
+    print("\n" + "-" * 40)
+    print(" 阶段 6/7: 交叉引用智能体 (Cross Referencer Agent)")
+    print("-" * 40)
+
+    cross_ref_result = None
+    try:
+        from agents.cross_referencer import run_cross_reference
+        cross_ref_result = run_cross_reference(papers, report_date)
+        if cross_ref_result and cross_ref_result.get("graph"):
+            graph = cross_ref_result["graph"]
+            print(f"[Main] [OK] 关联图谱构建完成")
+            print(f"    节点: {len(graph.get('nodes', []))}")
+            print(f"    边: {len(graph.get('edges', []))}")
+            print(f"    聚类: {len(graph.get('clusters', []))}")
+    except Exception as e:
+        print(f"[Main] [WARN] 交叉引用分析失败: {e}")
+
+    # ================================================
+    # 阶段 7: 双语翻译（智能体 6，默认只翻译 Top 论文）
+    # ================================================
+    print("\n" + "-" * 40)
+    print(" 阶段 7/7: 双语翻译智能体 (Translator Agent)")
+    print("-" * 40)
+
+    if _check_api_key():
+        from agents.translator import translate_paper_batch
+        try:
+            # 只翻译 Top 20 高评分论文以节省 API 调用
+            top_for_translation = sorted(
+                papers, key=lambda x: float(x.get("importance", 0)), reverse=True
+            )[:20]
+            translate_paper_batch(top_for_translation)
+            print(f"[Main] [OK] 翻译完成 (Top {len(top_for_translation)} 篇)")
+        except Exception as e:
+            print(f"[Main] [WARN] 翻译失败: {e}")
+    else:
+        print("[Main] [WARN] 未配置 API Key，跳过翻译")
 
     print("\n" + "=" * 60)
     print(f"  全流程完成！")

@@ -66,6 +66,25 @@ SCHEDULE_HOUR = int(os.environ.get("SCHEDULE_HOUR", "8"))
 SCHEDULE_MINUTE = int(os.environ.get("SCHEDULE_MINUTE", "0"))
 
 # ============================================================
+# 周报配置
+# ============================================================
+WEEKLY_DIGEST_DAY = int(os.environ.get("WEEKLY_DIGEST_DAY", "7"))  # 周日=7
+WEEKLY_LOOKBACK_DAYS = int(os.environ.get("WEEKLY_LOOKBACK_DAYS", "7"))
+
+# ============================================================
+# 质量评估配置
+# ============================================================
+QUALITY_BATCH_SIZE = int(os.environ.get("QUALITY_BATCH_SIZE", "12"))
+QUALITY_MIN_SCORE = float(os.environ.get("QUALITY_MIN_SCORE", "2.0"))
+
+# ============================================================
+# 翻译配置
+# ============================================================
+TRANSLATE_TOP_N = int(os.environ.get("TRANSLATE_TOP_N", "20"))
+TRANSLATE_TITLES = os.environ.get("TRANSLATE_TITLES", "true").lower() == "true"
+TRANSLATE_ABSTRACTS = os.environ.get("TRANSLATE_ABSTRACTS", "true").lower() == "true"
+
+# ============================================================
 # Web UI 配置
 # ============================================================
 WEB_HOST = os.environ.get("WEB_HOST", "0.0.0.0")
