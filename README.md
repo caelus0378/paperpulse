@@ -1,22 +1,22 @@
 # 🎓 每日学术论文热点追踪系统
 
-基于 **OpenClaw 多智能体协同框架** 设计，自动从 arXiv 采集最新 AI/CS 论文，通过三个分工明确的智能体完成分类、分析和趋势预测，最终生成结构化的每日日报。
+基于 **OpenClaw 多智能体协同框架** 设计，自动从 OpenAlex 采集最新 AI/CS 论文，通过七个分工明确的智能体完成采集、分类、趋势分析、质量评估、交叉引用、双语翻译和周报汇总，最终生成结构化的每日日报。
 
 ---
 
 ## 系统架构
 
 ```
-┌───────────────────────────────────────────────────────┐
-│                    系统编排层 (main.py)                 │
-├───────────┬────────────────┬────────────────┬─────────┤
-│  智能体 1  │   智能体 2     │    智能体 3    │ 汇总器  │
-│ Collector │  Classifier    │ TrendAnalyzer  │ Agregat │
-│ 论文采集   │  分类与摘要     │   趋势分析      │ 日报生成 │
-├───────────┴────────────────┴────────────────┴─────────┤
-│                    基础设施层                           │
-│  arXiv API  │  DeepSeek API  │  SQLite  │  Gradio     │
-└───────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                       系统编排层 (main.py)                        │
+├──────────┬──────────┬──────────┬──────────┬──────────┬───────────┤
+│ 智能体 1  │ 智能体 2  │ 智能体 3  │ 智能体 4  │ 智能体 5  │ 智能体 6   │ 智能体 7  │
+│Collector │Classifier│TrendAna │QualityAs│CrossRef │Translator│WeeklyDig │
+│ 论文采集  │ 分类摘要  │ 趋势分析  │ 质量评估  │ 关联挖掘  │ 双语翻译   │ 周报汇总  │
+├──────────┴──────────┴──────────┴──────────┴──────────┴───────────┤
+│                       基础设施层                                   │
+│  OpenAlex API │ DeepSeek API │ SQLite │ Gradio │ jieba │ numpy   │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 ## 快速开始
@@ -114,10 +114,11 @@ arxiv-analysis-system/
 ├── main.py                  # 主入口 + 流水线编排
 ├── config.py                # 全局配置
 ├── database.py              # SQLite 数据持久化
-├── aggregator.py            # 报告汇总智能体
+├── aggregator.py            # 日报汇总智能体
 ├── visualization.py         # 图表生成（matplotlib）
 ├── web_ui.py                # Gradio Web 界面
 ├── scheduler.py             # 定时任务调度
+├── local_sync.py            # 本地采集同步脚本
 ├── requirements.txt         # Python 依赖
 ├── README.md                # 项目说明
 ├── Dockerfile               # Docker 部署
@@ -125,26 +126,35 @@ arxiv-analysis-system/
 │   ├── __init__.py
 │   ├── collector.py         # 智能体 1: 论文采集
 │   ├── classifier.py        # 智能体 2: 分类与摘要
-│   └── trend_analyzer.py    # 智能体 3: 趋势分析
+│   ├── trend_analyzer.py    # 智能体 3: 趋势分析
+│   ├── quality_assessor.py  # 智能体 4: 质量评估
+│   ├── cross_referencer.py  # 智能体 5: 交叉引用与关联
+│   ├── translator.py        # 智能体 6: 双语翻译
+│   └── weekly_digest.py     # 智能体 7: 周报汇总
 ├── data/                    # SQLite 数据库（自动创建）
-└── reports/                 # 日报 + 图表（自动创建）
+└── reports/                 # 日报 + 图表 + 周报（自动创建）
     ├── charts/
+    ├── weekly/
     └── report_YYYY-MM-DD.md
 ```
 
-## 三个智能体分工
+## 七个智能体分工
 
-| 智能体 | 文件 | 职责 | 依赖 |
-|--------|------|------|------|
-| 📡 Collector | `agents/collector.py` | 从 arXiv 采集最新论文，解析元数据 | arXiv API, feedparser |
+| 智能体 | 文件 | 职责 | 核心技术 |
+|--------|------|------|----------|
+| 📡 Collector | `agents/collector.py` | 从 OpenAlex 采集最新论文，解析元数据 | OpenAlex API |
 | 🏷️ Classifier | `agents/classifier.py` | 子领域分类，提取关键贡献，重要性评分 | DeepSeek API |
 | 📊 TrendAnalyzer | `agents/trend_analyzer.py` | 关键词提取，趋势预测，历史对比 | jieba, DeepSeek API |
-| 📝 Aggregator | `aggregator.py` | 整合三智能体输出，生成 Markdown 日报 | - |
+| ✅ QualityAssessor | `agents/quality_assessor.py` | 四维质量评估（方法论/创新/可复现/写作） | DeepSeek API |
+| 🔗 CrossReferencer | `agents/cross_referencer.py` | 论文关联图谱，TF-IDF 语义相似度，跨领域发现 | numpy, TF-IDF |
+| 🌐 Translator | `agents/translator.py` | 标题/摘要中英互译，支持双语报告 | DeepSeek API |
+| 📝 WeeklyDigest | `agents/weekly_digest.py` | 7天数据聚合，周报自动生成 | DeepSeek API |
+| 📋 Aggregator | `aggregator.py` | 整合多智能体输出，生成 Markdown 日报 | - |
 
 ## 数据来源
 
-- **arXiv API** — 免费学术预印本平台
-- 覆盖分类: `cs.AI`, `cs.CL`, `cs.CV`, `cs.LG`, `cs.NE`, `cs.RO`, `cs.IR`, `cs.SE`
+- **OpenAlex API** — 完全开放免费的学术数据库，不限量
+- 覆盖主题: AI, CV, NLP, ML, Robotics, RL, DL, LLM
 - 每日采集上限: 200 篇（可配置）
 
 ## 技术栈
@@ -152,9 +162,8 @@ arxiv-analysis-system/
 | 层级 | 技术 |
 |------|------|
 | AI 模型 | DeepSeek API (deepseek-chat) |
-| 数据采集 | arXiv API, requests, feedparser |
-| 数据分析 | pandas, numpy |
-| 中文处理 | jieba |
+| 数据采集 | OpenAlex API, requests |
+| 数据分析 | pandas, numpy, jieba |
 | 可视化 | matplotlib |
 | Web UI | Gradio |
 | 数据库 | SQLite |
