@@ -25,6 +25,10 @@ COPY . .
 # 创建数据和报告目录
 RUN mkdir -p /app/data /app/reports/charts
 
+# 设置时区
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 # 暴露端口
 EXPOSE 7860
 
