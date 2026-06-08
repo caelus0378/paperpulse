@@ -119,7 +119,7 @@ def _build_category_bars(papers: list[dict]) -> str:
     if not papers:
         return ""
 
-    dist = Counter(p.get("subfield", "") or "未分类" for p in papers)
+    dist = Counter(_valid_subfield(p) for p in papers if _valid_subfield(p))
     items = dist.most_common(8)
     labels = [it[0] for it in items]
     vals = [it[1] for it in items]
@@ -146,6 +146,12 @@ def _build_category_bars(papers: list[dict]) -> str:
     ax.tick_params(axis="y", colors=DARK, labelsize=10)
 
     return _fig_to_b64(fig)
+
+
+def _valid_subfield(p: dict) -> str:
+    """获取有效子领域名，空值统一过滤"""
+    sf = (p.get("subfield") or "").strip()
+    return sf if sf else None
 
 
 def _importance_display(n) -> str:
@@ -408,7 +414,7 @@ footer {{ display: none !important; }}
     width: 100%; border-collapse: collapse; font-size: 13px;
 }}
 .compare-table th {{
-    background: {PRIMARY}; color: #FFFFFF; padding: 14px 16px; text-align: center;
+    background: {PRIMARY}; color: #FFFFFF !important; padding: 14px 16px; text-align: center;
     font-weight: 700; font-size: 14px;
 }}
 .compare-table th:first-child {{ border-radius: 10px 0 0 0; }}
@@ -442,8 +448,8 @@ footer {{ display: none !important; }}
     width: 400px; height: 400px; border-radius: 50%;
     background: rgba(37,99,235,0.08);
 }}
-.about-hero h1 {{ color: #FFFFFF; font-size: 36px; font-weight: 800; margin: 0; position: relative; z-index: 1; }}
-.about-hero p {{ color: #CBD5E1; font-size: 15px; margin-top: 8px; position: relative; z-index: 1; }}
+.about-hero h1 {{ color: #FFFFFF !important; font-size: 36px; font-weight: 800; margin: 0; position: relative; z-index: 1; }}
+.about-hero p {{ color: #CBD5E1 !important; font-size: 15px; margin-top: 8px; position: relative; z-index: 1; }}
 
 /* 统计数字横幅 */
 .stat-banner {{
@@ -558,7 +564,7 @@ def _build_top_papers_card(papers: list[dict], top_k: int = 5) -> str:
 def _build_quick_stats(papers: list[dict]) -> str:
     total = len(papers)
     hot = len([p for p in papers if float(p.get("importance", 0)) >= 4.0])
-    dist = Counter(p.get("subfield", "") or "未分类" for p in papers)
+    dist = Counter(_valid_subfield(p) for p in papers if _valid_subfield(p))
     top_cat = dist.most_common(1)[0][0] if dist else "暂无"
 
     return f"""
@@ -610,7 +616,7 @@ def _build_ai_digest(trend: dict) -> str:
 
 
 def _build_category_card(chart_b64: str, papers: list[dict]) -> str:
-    dist = Counter(p.get("subfield", "") or "未分类" for p in papers)
+    dist = Counter(_valid_subfield(p) for p in papers if _valid_subfield(p))
     total = len(papers)
     items = dist.most_common(8)
     shown = sum(c for _, c in items)
@@ -1582,8 +1588,8 @@ def build_about_html() -> str:
 
     <!-- ═══ ① Hero 横幅 ═══ -->
     <div class="about-hero animate-in d1">
-        <h1>PaperPulse</h1>
-        <p>每日学术论文热点追踪系统 · 基于 OpenClaw 的多智能体协同分析平台</p>
+        <h1 style="color:#FFFFFF">PaperPulse</h1>
+        <p style="color:#CBD5E1">每日学术论文热点追踪系统 · 基于 OpenClaw 的多智能体协同分析平台</p>
     </div>
 
     <!-- ═══ ② 架构总览 ═══ -->
@@ -1642,9 +1648,9 @@ def build_about_html() -> str:
         <div style="overflow-x:auto;margin-top:16px">
             <table class="compare-table">
                 <tr>
-                    <th>评价维度</th>
-                    <th>方案 A: 单 Agent 大模型</th>
-                    <th>方案 B: 多 Agent 协同 (本系统)</th>
+                    <th style="color:#FFFFFF">评价维度</th>
+                    <th style="color:#FFFFFF">方案 A: 单 Agent 大模型</th>
+                    <th style="color:#FFFFFF">方案 B: 多 Agent 协同 (本系统)</th>
                 </tr>
                 {compare_html}
             </table>
