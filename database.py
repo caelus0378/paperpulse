@@ -108,6 +108,25 @@ def init_db():
         )
     """)
 
+    # 深度分析表（每日精选一篇论文深度解读）
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS deep_analyses (
+            report_date TEXT PRIMARY KEY,
+            arxiv_id TEXT,
+            tldr TEXT,
+            problem TEXT,
+            methodology TEXT,
+            innovations TEXT,          -- JSON 数组
+            experiment_highlights TEXT,
+            limitations TEXT,
+            target_audience TEXT,
+            impact_prediction TEXT,     -- high / medium / low
+            impact_reason TEXT,
+            full_analysis TEXT,         -- 完整 Markdown
+            created_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+
     conn.commit()
     conn.close()
 

@@ -3,7 +3,7 @@
 ──────────────────────────────
 基于 OpenClaw 多智能体协同框架设计
 
-七个智能体分工协作：
+八个智能体分工协作：
   智能体 1 (Collector)      → 论文采集
   智能体 2 (Classifier)     → 分类与摘要
   智能体 3 (TrendAnalyzer)  → 趋势分析
@@ -11,7 +11,7 @@
   智能体 5 (CrossReferencer)→ 交叉引用与关联
   智能体 6 (Translator)     → 双语翻译
   智能体 7 (WeeklyDigest)   → 周报汇总
-  Aggregator                → 日报汇总
+  智能体 8 (DeepAnalyzer)   → 深度解读
 
 用法:
   # 运行一次完整分析
@@ -177,7 +177,7 @@ def run_full_pipeline():
     # 阶段 7: 双语翻译（智能体 6，默认只翻译 Top 论文）
     # ================================================
     print("\n" + "-" * 40)
-    print(" 阶段 7/7: 双语翻译智能体 (Translator Agent)")
+    print(" 阶段 7/8: 双语翻译智能体 (Translator Agent)")
     print("-" * 40)
 
     if _check_api_key():
@@ -194,8 +194,33 @@ def run_full_pipeline():
     else:
         print("[Main] [WARN] 未配置 API Key，跳过翻译")
 
+    # ================================================
+    # 阶段 8: 深度解读（智能体 8，选最高分论文做全方位分析）
+    # ================================================
+    print("\n" + "-" * 40)
+    print(" 阶段 8/8: 深度解读智能体 (Deep Analyzer Agent)")
+    print("-" * 40)
+
+    if _check_api_key() and papers:
+        from agents.deep_analyzer import run_deep_analysis
+        try:
+            deep_result = run_deep_analysis(papers, report_date)
+            if deep_result:
+                print(f"[Main] [OK] 深度解读完成")
+                print(f"    论文: {deep_result.get('arxiv_id', '?')}")
+                tldr = deep_result.get('tldr', '')
+                print(f"    TL;DR: {tldr[:60]}...")
+            else:
+                print("[Main] [WARN] 深度解读返回空结果")
+        except Exception as e:
+            print(f"[Main] [WARN] 深度解读失败: {e}")
+    elif not papers:
+        print("[Main] [WARN] 无论文数据，跳过深度解读")
+    else:
+        print("[Main] [WARN] 未配置 API Key，跳过深度解读")
+
     print("\n" + "=" * 60)
-    print(f"  全流程完成！")
+    print(f"  全流程完成！8 个智能体全部就绪")
     print(f"  论文数: {len(papers)} | 日报: reports/report_{report_date}.md")
     print("=" * 60)
 

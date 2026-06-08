@@ -42,6 +42,7 @@ services:
     restart: unless-stopped
     environment:
       - TZ=Asia/Shanghai
+      - PYTHONUNBUFFERED=1
     env_file:
       - .env
     volumes:
