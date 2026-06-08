@@ -908,6 +908,271 @@ def build_history_html(selected_date: str = "") -> str:
 # 学术周报页
 # ══════════════════════════════════════════════════════════
 
+
+# ══════════════════════════════════════════════════════════
+# 跨天对比分析
+# ══════════════════════════════════════════════════════════
+
+def _build_comparison_chart(date1: str, date2: str, metric: str = "count") -> str:
+    """构建双日子领域对比图"""
+    from collections import Counter
+
+    p1 = get_papers_by_date(date1)
+    p2 = get_papers_by_date(date2)
+
+    if metric == "count":
+        d1 = Counter((x.get("subfield") or "未分类" for x in p1)).most_common(6)
+        d2 = Counter((x.get("subfield") or "未分类" for x in p2)).most_common(6)
+    else:  # avg_score
+        by_sf1 = {}
+        for x in p1:
+            sf = x.get("subfield") or "未分类"
+            by_sf1.setdefault(sf, []).append(float(x.get("importance", 0)))
+        d1 = sorted([(k, sum(v)/len(v)) for k,v in by_sf1.items() if len(v)>=3], key=lambda x:x[1], reverse=True)[:6]
+        by_sf2 = {}
+        for x in p2:
+            sf = x.get("subfield") or "未分类"
+            by_sf2.setdefault(sf, []).append(float(x.get("importance", 0)))
+        d2 = sorted([(k, sum(v)/len(v)) for k,v in by_sf2.items() if len(v)>=3], key=lambda x:x[1], reverse=True)[:6]
+
+    # Combine all categories
+    all_cats = sorted(set([k for k,_ in d1] + [k for k,_ in d2]))
+    # limit to top 8
+    all_cats = all_cats[:8]
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 3.6), sharey=False)
+    fig.patch.set_facecolor(CARD_BG)
+    for ax in (ax1, ax2):
+        ax.set_facecolor(CARD_BG)
+
+    colors1 = [ACCENT, "#6366F1", "#8B5CF6", "#EC4899", GOLD, TEAL, "#14B8A6", "#84CC16"]
+    colors2 = [TEAL, "#14B8A6", ACCENT, GOLD, "#6366F1", "#EC4899", "#8B5CF6", "#84CC16"]
+
+    for ax, data, title, colors, d_str in [
+        (ax1, d1, date1, colors1, date1),
+        (ax2, d2, date2, colors2, date2)
+    ]:
+        if not data:
+            ax.text(0.5, 0.5, "无数据", transform=ax.transAxes, ha="center", va="center", color=LIGHT_GRAY, fontsize=14)
+            ax.set_title(d_str, fontsize=12, fontweight="bold", color=PRIMARY)
+            for spine in ax.spines.values():
+                spine.set_visible(False)
+            continue
+        labels = [it[0][:16] for it in data]
+        vals = [it[1] for it in data]
+        bar_colors = colors[:len(labels)]
+
+        if metric == "score":
+            ax.barh(list(reversed(labels)), list(reversed(vals)), color=list(reversed(bar_colors)),
+                    height=0.55, edgecolor="white", linewidth=0.5)
+            for bar, val in zip([], []): pass
+            ax.set_xlabel("均分", fontsize=10, color=GRAY)
+            ax.set_xlim(0, 5.0)
+        else:
+            bars = ax.barh(list(reversed(labels)), list(reversed(vals)), color=list(reversed(bar_colors)),
+                          height=0.55, edgecolor="white", linewidth=0.5)
+            for bar, val in zip(bars, reversed(vals)):
+                ax.text(bar.get_width() + 0.15, bar.get_y() + bar.get_height() / 2,
+                        str(val), va="center", fontsize=10, fontweight="bold", color=DARK)
+
+        ax.set_title(d_str, fontsize=12, fontweight="bold", color=PRIMARY)
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+        ax.tick_params(axis="x", colors=GRAY, labelsize=8)
+        ax.tick_params(axis="y", colors=DARK, labelsize=9)
+
+    plt.tight_layout()
+    return _fig_to_b64(fig)
+
+
+def _build_compare_score_dist(date1: str, date2: str) -> str:
+    """双日评分分布叠加图"""
+    p1 = get_papers_by_date(date1)
+    p2 = get_papers_by_date(date2)
+
+    fig, ax = plt.subplots(figsize=(7, 2.8))
+    fig.patch.set_facecolor(CARD_BG)
+    ax.set_facecolor(CARD_BG)
+
+    s1 = [float(x.get("importance", 0)) for x in p1 if float(x.get("importance", 0)) > 0]
+    s2 = [float(x.get("importance", 0)) for x in p2 if float(x.get("importance", 0)) > 0]
+
+    bins = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
+    kw = dict(alpha=0.55, bins=bins, edgecolor="white", linewidth=0.5)
+
+    ax.hist(s1, label=date1, color=ACCENT, **kw)
+    ax.hist(s2, label=date2, color=TEAL, alpha=0.45, bins=bins, edgecolor="white", linewidth=0.5)
+
+    ax.axvline(x=sum(s1)/len(s1) if s1 else 0, color=ACCENT, linestyle="--", linewidth=2,
+               label=f'{date1} 均分 {sum(s1)/len(s1):.1f}' if s1 else '')
+    ax.axvline(x=sum(s2)/len(s2) if s2 else 0, color=TEAL, linestyle="--", linewidth=2,
+               label=f'{date2} 均分 {sum(s2)/len(s2):.1f}' if s2 else '')
+
+    ax.legend(fontsize=9, loc="upper right", framealpha=0.8, edgecolor=BORDER)
+    ax.set_xlabel("重要性评分", fontsize=10, color=GRAY)
+    ax.set_ylabel("论文数", fontsize=10, color=GRAY)
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    return _fig_to_b64(fig)
+
+
+def build_compare_html(date1: str = "", date2: str = "") -> str:
+    """跨天对比分析页"""
+    available = get_all_report_dates()
+
+    # 默认取最后两天
+    if not date1 and len(available) >= 2:
+        date1 = available[1]  # yesterday
+    elif not date1 and available:
+        date1 = available[0]
+    if not date2 and available:
+        date2 = available[0]  # today/latest
+
+    p1 = get_papers_by_date(date1) if date1 else []
+    p2 = get_papers_by_date(date2) if date2 else []
+
+    cnt1, cnt2 = len(p1), len(p2)
+    avg1 = sum(float(x.get("importance", 0)) for x in p1) / cnt1 if cnt1 else 0
+    avg2 = sum(float(x.get("importance", 0)) for x in p2) / cnt2 if cnt2 else 0
+
+    # 高频关键词变化
+    from collections import Counter
+    kw1 = Counter()
+    for x in p1:
+        for w in (x.get("categories") or []):
+            kw1[w] += 1
+    kw2 = Counter()
+    for x in p2:
+        for w in (x.get("categories") or []):
+            kw2[w] += 1
+
+    top_kw1 = kw1.most_common(5)
+    top_kw2 = kw2.most_common(5)
+
+    # 新出现/消失的关键词
+    kw1_set = set(kw1.keys())
+    kw2_set = set(kw2.keys())
+    new_kw = kw2_set - kw1_set
+    gone_kw = kw1_set - kw2_set
+
+    new_kw_html = "".join(f'<span class="badge badge-blue" style="margin:2px">{k}</span> ' for k in list(new_kw)[:6]) if new_kw else '<span style="color:{LIGHT_GRAY};font-size:12px">无</span>'
+    gone_kw_html = "".join(f'<span class="badge badge-gray" style="margin:2px">{k}</span> ' for k in list(gone_kw)[:6]) if gone_kw else '<span style="color:{LIGHT_GRAY};font-size:12px">无</span>'
+
+    # 评分变化最大的论文
+    def _top_k(papers, k=5):
+        return sorted(papers, key=lambda x: float(x.get("importance", 0)), reverse=True)[:k]
+
+    top1 = _top_k(p1, 3)
+    top2 = _top_k(p2, 3)
+
+    def _render_paper_row(p, rank):
+        imp = float(p.get("importance", 0))
+        badge = "badge-red" if imp >= 4.0 else "badge-gold" if imp >= 3.0 else "badge-blue"
+        title = (p.get("title") or "")[:60]
+        return f"""
+        <div class="paper-row">
+            <span style="font-size:18px;width:24px">{rank}</span>
+            <div class="paper-info">
+                <div class="title"><a href="https://doi.org/{p['arxiv_id']}" target="_blank">{title}</a></div>
+                <div class="meta">{_importance_display(imp)} &nbsp;|&nbsp; {p.get('subfield','')[:18]}</div>
+            </div>
+            <span class="badge {badge}">{imp:.1f}</span>
+        </div>"""
+
+    chart_score = _build_comparison_chart(date1, date2, "count") if (p1 or p2) else ""
+    chart_dist = _build_compare_score_dist(date1, date2) if (p1 or p2) else ""
+
+    # Change indicators
+    cnt_delta = cnt2 - cnt1
+    cnt_delta_str = f'<span style="color:{TEAL if cnt_delta>=0 else RED};font-weight:700">{"+" if cnt_delta>=0 else ""}{cnt_delta}</span>'
+    avg_delta = avg2 - avg1
+    avg_delta_str = f'<span style="color:{TEAL if avg_delta>=0 else RED};font-weight:700">{"+" if avg_delta>=0 else ""}{avg_delta:.1f}</span>'
+
+    return f"""
+    <style>{DASHBOARD_CSS}</style>
+    {_build_navbar()}
+
+    <div class="card" style="margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px">
+            <div>
+                <div class="card-title">📊 跨天对比分析</div>
+                <div class="card-subtitle">并排对比两天的论文数据 · 发现趋势变化和关键差异</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPI 对比卡 -->
+    <div class="stats-row" style="margin-bottom:24px;grid-template-columns:repeat(4,1fr)">
+        <div class="stat-card stat-card-accent">
+            <div class="number">{cnt1}</div>
+            <div class="label">{date1}<br>论文数</div>
+        </div>
+        <div class="stat-card stat-card-teal">
+            <div class="number">{cnt2}</div>
+            <div class="label">{date2}<br>论文数 &nbsp; {cnt_delta_str}</div>
+        </div>
+        <div class="stat-card stat-card-gold">
+            <div class="number">{avg1:.1f}</div>
+            <div class="label">{date1}<br>均分</div>
+        </div>
+        <div class="stat-card stat-card-red">
+            <div class="number">{avg2:.1f}</div>
+            <div class="label">{date2}<br>均分 &nbsp; {avg_delta_str}</div>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+        <!-- 左: 子领域分布对比 -->
+        <div class="card" style="grid-column:1/-1">
+            <div class="card-title">📂 子领域分布对比</div>
+            <div class="card-subtitle">{date1}（左） vs {date2}（右）</div>
+            <img src="{chart_score}" style="width:100%;border-radius:8px" alt="子领域对比">
+        </div>
+
+        <!-- 评分分布 -->
+        <div class="card">
+            <div class="card-title">📊 评分分布对比</div>
+            <div class="card-subtitle">垂直虚线 = 该日均分</div>
+            <img src="{chart_dist}" style="width:100%;border-radius:8px" alt="评分分布">
+        </div>
+
+        <!-- 关键词变化 -->
+        <div class="card">
+            <div class="card-title">🏷️ 分类关键词变化</div>
+            <div class="card-subtitle">新兴 vs 消退的分类标签</div>
+            <div style="margin-top:12px">
+                <div style="font-size:12px;font-weight:600;color:{PRIMARY};margin-bottom:6px">
+                    🆕 {date2} 新出现 ({len(new_kw)} 个)
+                </div>
+                <div style="margin-bottom:14px">{new_kw_html}</div>
+                <div style="font-size:12px;font-weight:600;color:{GRAY};margin-bottom:6px">
+                    📭 {date1} 有过但 {date2} 消退 ({len(gone_kw)} 个)
+                </div>
+                <div>{gone_kw_html}</div>
+            </div>
+        </div>
+
+        <!-- Top 3 对比 -->
+        <div class="card">
+            <div class="card-title">🏆 {date1} TOP 3</div>
+            <div class="card-subtitle">当日评分最高的论文</div>
+            {"".join(_render_paper_row(p, medals[i]) for i,p in enumerate(top1) if p) if top1 else '<div style="color:{LIGHT_GRAY};padding:20px">无数据</div>'}
+        </div>
+
+        <div class="card">
+            <div class="card-title">🏆 {date2} TOP 3</div>
+            <div class="card-subtitle">当日评分最高的论文</div>
+            {"".join(_render_paper_row(p, medals[i]) for i,p in enumerate(top2) if p) if top2 else '<div style="color:{LIGHT_GRAY};padding:20px">无数据</div>'}
+        </div>
+    </div>
+    {_build_footer()}
+    """
+
+
+medals = {0: "🥇", 1: "🥈", 2: "🥉"}
+
+
 def build_weekly_html() -> str:
     from agents.weekly_digest import generate_weekly_digest, get_weekly_report
 
@@ -1200,7 +1465,35 @@ def build_ui():
                     outputs=deep_dive_html,
                 )
 
-            # ── Tab 5: 周报 ──
+            # ── Tab 5: 跨天对比 ──
+            with gr.TabItem("📊 跨天对比", id="compare"):
+                available_dates = get_all_report_dates()
+                d1 = available_dates[1] if len(available_dates) >= 2 else (available_dates[0] if available_dates else "")
+                d2 = available_dates[0] if available_dates else ""
+
+                with gr.Column():
+                    with gr.Row():
+                        compare_date1 = gr.Dropdown(
+                            label="日期 A",
+                            choices=available_dates,
+                            value=d1,
+                            interactive=True,
+                        )
+                        compare_date2 = gr.Dropdown(
+                            label="日期 B",
+                            choices=available_dates,
+                            value=d2,
+                            interactive=True,
+                        )
+                    compare_html = gr.HTML(value=build_compare_html(d1, d2))
+
+                def _on_compare_change(d1, d2):
+                    return build_compare_html(d1, d2)
+
+                compare_date1.change(_on_compare_change, [compare_date1, compare_date2], compare_html)
+                compare_date2.change(_on_compare_change, [compare_date1, compare_date2], compare_html)
+
+            # ── Tab 6: 周报 ──
             with gr.TabItem("📝 学术周报", id="weekly"):
                 weekly_html = gr.HTML(value=build_weekly_html())
                 refresh_weekly_btn = gr.Button("↻ 生成/刷新周报", variant="primary")
@@ -1209,7 +1502,7 @@ def build_ui():
                     outputs=weekly_html,
                 )
 
-            # ── Tab 6: 关于系统 ──
+            # ── Tab 7: 关于系统 ──
             with gr.TabItem("ℹ️ 关于系统", id="about"):
                 gr.HTML(f"""
                 <style>{DASHBOARD_CSS}</style>
